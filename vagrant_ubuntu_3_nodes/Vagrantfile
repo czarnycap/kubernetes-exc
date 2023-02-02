@@ -1,3 +1,8 @@
+## TODO
+## fix join.sh
+## environment variables
+## avoid apt update
+
 Vagrant.configure("2") do |config|
     config.vm.provider :virtualbox do |v|
       v.memory = 2048
@@ -17,7 +22,7 @@ Vagrant.configure("2") do |config|
   
       
     end
-  
+    # %w{worker1 worker2}.each_with_index do |name, i|
     %w{worker1 worker2}.each_with_index do |name, i|
       config.vm.define name do |worker|
         worker.vm.box = "ubuntu/focal64"
@@ -44,7 +49,7 @@ Vagrant.configure("2") do |config|
   sed -i '/swap/d' /etc/fstab
   export DEBIAN_FRONTEND=noninteractive
   apt-get update 
-  apt-get install -y git ebtables ethtool curl apt-transport-https docker.io
+  apt-get install -y git ebtables ethtool curl apt-transport-https docker.io avahi-daemon libnss-mdns
   curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
   cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
   deb http://apt.kubernetes.io/ kubernetes-xenial main
