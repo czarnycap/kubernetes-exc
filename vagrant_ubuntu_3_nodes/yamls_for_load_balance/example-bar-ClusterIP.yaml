@@ -1,0 +1,41 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: example-bar
+  namespace: default
+  labels:
+    app: example-bar
+    deployment: bar
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: example-bar
+  template:
+    metadata:
+      labels:
+        app: example-bar
+        deployment: bar
+    spec:
+      containers:
+      - name: example-bar
+        image: public.ecr.aws/nginx/nginx:latest
+        command: [ "/bin/sh", "-c" ]
+        args:
+        - echo "bar - $HOSTNAME" > /usr/share/nginx/html/index.html;
+          nginx -g "daemon off;";
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-cluster-ip-service
+spec:
+  selector:
+    app: example-bar
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80

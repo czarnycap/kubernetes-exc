@@ -1,0 +1,46 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: example-foo
+  namespace: default
+  labels:
+    app: example-foo
+    deployment: foo
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: example-foo
+  template:
+    metadata:
+      labels:
+        app: example-foo
+        deployment: foo
+    spec:
+      containers:
+      - name: example-foo
+        image: public.ecr.aws/nginx/nginx:latest
+        command: [ "/bin/sh", "-c" ]
+        args:
+        - echo "foo - $HOSTNAME" > /usr/share/nginx/html/index.html;
+          nginx -g "daemon off;";
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: foo-nodeport-svc
+  labels:
+    deployment: foo
+spec:
+  externalTrafficPolicy: Cluster 
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+      nodePort: 30080
+  selector:
+    deployment: foo
+  type: NodePort
