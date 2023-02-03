@@ -108,7 +108,8 @@ MASTER
 $install_flannel = <<-FLAN
 # flannel required for networking in k8s cluster
 # wget https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-wget https://github.com/czarnycap/flannel-vagrant/releases/download/preprod/kube-flannel.yml
+wget https://raw.githubusercontent.com/czarnycap/kubernetes-exc/bugfix/issue-1/flanel-setup-not-correct-pods-from-worker-cannot-be-accesses-from-master/k8s_auto_vagrant_3nodes/flannel/kube-flannel.yml
+cat kube-flannel.yml
 kubectl apply -f kube-flannel.yml
 sudo systemctl daemon-reload
 sudo systemctl restart kubelet
