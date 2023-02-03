@@ -1,7 +1,10 @@
-
 ##############################################################
 # TODO
+### flanel changes as it doesn't work well with https://github.com/flannel-io/flannel/blob/master/Documentation/troubleshooting.md
+### 
 # fix join.sh script 
+### release 0.9.0
+### automatically assigned bridge network
 
 
 Vagrant.configure("2") do |config|
@@ -16,19 +19,20 @@ Vagrant.configure("2") do |config|
     master.vm.box = "ubuntu/focal64"
     master.vm.hostname = "master"
     master.vm.network :private_network, ip: "192.168.56.11"
-    master.vm.network "public_network"
-    # master.vm.provision :shell, privileged: true, inline: $provision_cri
+    # master.vm.network "public_network" 
+    master.vm.network "public_network", bridge: "#$default_network_interface"
     master.vm.provision :shell, privileged: false, inline: $provision_master_node
     master.vm.provision :shell, privileged: false, inline: $install_flannel
+    master.vm.provision :shell, privileged: false, inline: $check_k8s_config
     
 end
 
-%w{worker1 worker2}.each_with_index do |name, i|
+%w{worker1}.each_with_index do |name, i|
     config.vm.define name do |worker|
     worker.vm.box = "ubuntu/focal64"
     worker.vm.hostname = name
     worker.vm.network :private_network, ip: "192.168.56.#{i + 12}"
-    worker.vm.network "public_network"
+    worker.vm.network "public_network", bridge: "#$default_network_interface"
     worker.vm.provision :shell, privileged: true, inline: $join_worker
 
     end
@@ -36,6 +40,8 @@ end
 
 
 end
+
+$default_network_interface = `ip route | awk '/^default/ {printf "%s", $5; exit 0}'`
 
 $common_tools = <<-SCRIPT
 # bridged traffic to iptables is enabled for kube-router.
@@ -86,8 +92,9 @@ rm -rf $OUTPUT_FILE
 # initialize master node
 sudo kubeadm init --apiserver-advertise-address=192.168.56.11 --pod-network-cidr=10.244.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock| grep "kubeadm join" > ${OUTPUT_FILE}
 # appending join.sh script with cri socket and skiping verification
-echo "--cri-socket=unix:///var/run/cri-dockerd.sock \" >> $OUTPUT_FILE
-echo "--discovery-token-unsafe-skip-ca-verification \" >>  $OUTPUT_FILE
+cat >> $OUTPUT_FILE <<EOF
+--cri-socket=unix:///var/run/cri-dockerd.sock --discovery-token-unsafe-skip-ca-verification
+EOF
 chmod +x $OUTPUT_FILE
 # Configure kubectl
 mkdir -p $HOME/.kube
@@ -112,3 +119,57 @@ sh /vagrant/join.sh
 systemctl daemon-reload
 systemctl restart kubelet
 WORKER
+
+$check_k8s_config = <<-KUBS
+# create example Cluster
+cat <<EOF > /home/vagrant/example-bar-ClusterIP.yaml
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: example-bar
+  namespace: default
+  labels:
+    app: example-bar
+    deployment: bar
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: example-bar
+  template:
+    metadata:
+      labels:
+        app: example-bar
+        deployment: bar
+    spec:
+      containers:
+      - name: example-bar
+        image: public.ecr.aws/nginx/nginx:latest
+        command: [ "/bin/sh", "-c" ]
+        args:
+        - echo "bar - $HOSTNAME" > /usr/share/nginx/html/index.html;
+          nginx -g "daemon off;";
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-cluster-ip-service
+spec:
+  selector:
+    app: example-bar
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+EOF
+# apply it to k8s
+kubectl apply -f /home/vagrant/example-bar-ClusterIP.yaml
+echo "15 seconds wait"
+wait 15
+echo "trying to list pods from default namespace "
+kubectl get pods --namespace=default -o wide
+
+KUBS
