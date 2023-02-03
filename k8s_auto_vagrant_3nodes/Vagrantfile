@@ -2,6 +2,7 @@
 # TODO
 ### flanel changes as it doesn't work well with https://github.com/flannel-io/flannel/blob/master/Documentation/troubleshooting.md
 ### 
+###
 # fix join.sh script 
 ### release 0.9.0
 ### automatically assigned bridge network
@@ -106,10 +107,13 @@ MASTER
 
 $install_flannel = <<-FLAN
 # flannel required for networking in k8s cluster
-wget https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+# wget https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+wget https://github.com/czarnycap/flannel-vagrant/releases/download/preprod/kube-flannel.yml
 kubectl apply -f kube-flannel.yml
 sudo systemctl daemon-reload
 sudo systemctl restart kubelet
+
+# taint not related to flannel
 kubectl taint nodes master node-role.kubernetes.io/control-plane-
 FLAN
 
