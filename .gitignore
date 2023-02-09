@@ -4,4 +4,4 @@
 *.log
 */*.log
 */.vagrant
-*join.sh
+*/join.sh
